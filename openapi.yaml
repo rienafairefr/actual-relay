@@ -1,0 +1,597 @@
+openapi: 3.0.1
+info:
+  title: Actual relay API
+  version: 0.1.0
+  description: ActualBudget (https://actualbudget.com) relay API. It describes rienafairefr/actual-relay, which connects to a locally running Actual app (version 0.0.144)
+paths:
+  /query:
+    post:
+      responses:
+        default:
+          description: default response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QueryResponse"
+      requestBody:
+        content:
+          text/plain:
+            schema:
+              type: string
+  /budget-months:
+    get:
+      responses:
+        default:
+          description: "Budget-months response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetMonths"
+  /budget-load:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                budgetId:
+                  type: string
+      responses:
+        204:
+          description: OK
+        400:
+          description: NOK
+  /budget/{month}:
+    parameters:
+      - name: month
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      responses:
+        default:
+          description: "Budget-months response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetMonthResponse"
+  /budget/{month}/{categoryId}:
+    parameters:
+      - name: month
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: categoryId
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - type: object
+                  properties:
+                    amount:
+                      type: number
+                - type: object
+                  properties:
+                    carryover:
+                      type: number
+      responses:
+        default:
+          description: "Budget-month category patch response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetMonthCategoryResponse"
+  /accounts/{accountId}/transactions-import:
+    parameters:
+      - name: accountId
+        required: true
+        in: path
+        schema:
+          type: string
+    post:
+      responses:
+        default:
+          description: " response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetMonths"
+  /accounts/{accountId}/transactions:
+    parameters:
+      - in: path
+        name: accountId
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      responses:
+        default:
+          description: "Account transactions response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountTransactions"
+    post:
+      responses:
+        default:
+          description: "Budget-months response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetMonths"
+  /transactions/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    patch:
+      responses:
+        204:
+          description: OK
+        400:
+          description: NOK
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+    delete:
+      responses:
+        204:
+          description: OK
+        400:
+          description: NOK
+  /accounts:
+    get:
+      responses:
+        default:
+          description: "accounts response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Accounts"
+    post:
+      responses:
+        200:
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+                format: uuid
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAccountRequest"
+  /accounts/{id}":
+    parameters:
+      - name: id
+        required: true
+        in: path
+        schema:
+          type: string
+    patch:
+      responses:
+        204:
+          description: OK
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+    delete:
+      responses:
+        204:
+          description: OK
+        400:
+          description: NOK
+  /accounts/{id}/close:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    post:
+      responses:
+        204:
+          description: OK
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+  /accounts/{id}/reopen:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    post:
+      responses:
+        204:
+          description: OK
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+  /category-groups:
+    get:
+      responses:
+        default:
+          description: "Category Groups"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryGroups"
+
+    post:
+      responses:
+        204:
+          description: OK
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+  /category-groups/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    patch:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        204:
+          description: OK
+        400:
+          description: NOK
+    delete:
+      responses:
+        204:
+          description: OK
+        400:
+          description: NOK
+  /categories:
+    get:
+      responses:
+        default:
+          description: "Categories response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoriesResponse"
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        204:
+          description: OK
+        400:
+          description: NOK
+  /categories/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    patch:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        204:
+          description: OK
+        400:
+          description: NOK
+    delete:
+      responses:
+        204:
+          description: OK
+        400:
+          description: NOK
+  /payees:
+    get:
+      responses:
+        default:
+          description: "Payees"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayeesResponse"
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        204:
+          description: OK
+        400:
+          description: NOK
+  /payees/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    patch:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        204:
+          description: OK
+        400:
+          description: NOK
+    delete:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        204:
+          description: OK
+        400:
+          description: NOK
+  /payee-rules/{payeeId}:
+    parameters:
+      - in: path
+        name: payeeId
+        required: true
+        schema:
+          type: string
+    get:
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: NOK
+    patch:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        204:
+          description: OK
+        400:
+          description: NOK
+    delete:
+      responses:
+        204:
+          description: OK
+        400:
+          description: NOK
+  /payee-rules:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        204:
+          description: OK
+        400:
+          description: NOK
+
+components:
+  schemas:
+    AccountTransactions:
+      type: array
+      items:
+        type: object
+    CategoriesResponse:
+      type: array
+      items:
+        $ref: "#/components/schemas/Category"
+    BudgetMonthCategoryResponse:
+      type: array
+      items:
+        type: object
+    BudgetMonths:
+      type: array
+      items:
+        type: string
+    Category:
+      type: object
+      properties:
+        group_id:
+          type: string
+          format: uuid
+        id:
+          type: string
+          format: uuid
+        is_income:
+          type: boolean
+        name:
+          type: string
+    Account:
+      type: object
+      properties:
+        closed:
+          type: boolean
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        offbudgeting:
+          type: boolean
+        type:
+          type: string
+          enum:
+            [
+              "checking",
+              "savings",
+              "investment",
+              "credit",
+              "mortgage",
+              "debt",
+              "other",
+            ]
+    CreateAccountRequest:
+      type: object
+      required:
+        - account
+      properties:
+        account:
+          $ref: "#/components/schemas/CreateAccount"
+        initialBalance:
+          type: number
+    CreateAccount:
+      type: object
+      properties:
+        closed:
+          type: boolean
+        name:
+          type: string
+        offbudgeting:
+          type: boolean
+        type:
+          type: string
+          enum:
+            [
+              "checking",
+              "savings",
+              "investment",
+              "credit",
+              "mortgage",
+              "debt",
+              "other",
+            ]
+    Accounts:
+      type: array
+      items:
+        $ref: "#/components/schemas/Account"
+    QueryResponse:
+      type: object
+    PayeesResponse:
+      type: array
+      items:
+        $ref: "#/components/schemas/Payee"
+    BudgetCategory:
+      type: object
+      properties:
+        balance:
+          type: number
+        budgeted:
+          type: number
+        carryover:
+          type: boolean
+        group_id:
+          type: string
+          format: uuid
+        id:
+          type: string
+          format: uuid
+        is_income:
+          type: boolean
+        name:
+          type: string
+        spent:
+          type: number
+    CategoryGroups:
+      type: array
+      items:
+        $ref: "#/components/schemas/CategoryGroup"
+    CategoryGroup:
+      type: object
+      properties:
+        balance:
+          type: number
+        budgeted:
+          type: number
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/BudgetCategory"
+        id:
+          type: string
+          format: uuid
+        is_income:
+          type: boolean
+        name:
+          type: string
+        spent:
+          type: number
+    BudgetMonthResponse:
+      type: object
+      properties:
+        categoryGroups:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryGroup"
+        forNextMonth:
+          type: number
+        fromLastMonth:
+          type: number
+        incomeAvailable:
+          type: number
+        lastMonthOverspent:
+          type: number
+        month:
+          type: string
+        toBudget:
+          type: number
+        totalBalance:
+          type: number
+        totalBudgeted:
+          type: number
+        totalIncome:
+          type: number
+        totalSpent:
+          type: number
+    Payee:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        category:
+          type: string
+          nullable: true
+        transfer_acct:
+          type: string
+          nullable: true
