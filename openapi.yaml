@@ -98,6 +98,13 @@ paths:
         schema:
           type: string
     post:
+      summary: Import transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransactionRequest"
       responses:
         default:
           description: " response"
@@ -114,6 +121,41 @@ paths:
           type: string
           format: uuid
     get:
+      parameters:
+        - in: query
+          name: endDate
+          schema:
+            type: string
+            format: date
+          required: true
+        - in: query
+          name: startDate
+          schema:
+            type: string
+            format: date
+          required: true
+      responses:
+        default:
+          description: "Account transactions response"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountTransactions"
+  /accounts/{accountId}/filtered-transactions:
+    parameters:
+      - in: path
+        name: accountId
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      parameters:
+        - in: query
+          schema:
+            type: string
+          name: text
+          required: true
       responses:
         default:
           description: "Account transactions response"
@@ -122,6 +164,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/AccountTransactions"
     post:
+      summary: Add a transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransactionRequest"
       responses:
         default:
           description: "Budget-months response"
@@ -163,6 +212,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/Accounts"
     post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAccountRequest"
       responses:
         200:
           description: OK
@@ -171,12 +226,6 @@ paths:
               schema:
                 type: string
                 format: uuid
-
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateAccountRequest"
   /accounts/{id}":
     parameters:
       - name: id
@@ -357,11 +406,6 @@ paths:
         400:
           description: NOK
     delete:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
       responses:
         204:
           description: OK
@@ -419,7 +463,7 @@ components:
     AccountTransactions:
       type: array
       items:
-        type: object
+        $ref: "#/components/schemas/Transaction"
     CategoriesResponse:
       type: array
       items:
@@ -581,6 +625,134 @@ components:
           type: number
         totalSpent:
           type: number
+    CreateTransactionRequest:
+      type: array
+      items:
+        $ref: "#/components/schemas/CreateTransaction"
+    Transaction:
+      type: object
+      required:
+        - account
+        - date
+      properties:
+        id:
+          type: string
+          format: uuid
+        account:
+          type: string
+          format: uuid
+        error:
+          type: string
+          nullable: true
+        date:
+          type: string
+          format: date
+        amount:
+          type: number
+        payee:
+          type: string
+          format: uuid
+          description: If given, this overrides payee_name.
+          nullable: true
+        payee_name:
+          type: string
+          description: If given, a payee will be created with this name. If this matches an already existing payee, it will use it.
+        imported_payee:
+          type: string
+          description: This can be anything. Meant to represent the raw description when importing, allowing the user to see the original value.
+          nullable: true
+        imported_id:
+          type: string
+          description: A unique id usually given by the bank, if importing. Use this is avoid duplicate transactions.
+          nullable: true
+        parent_id:
+          type: string
+          nullable: true
+        is_child:
+          type: boolean
+        sort_order:
+          type: number
+        starting_balance_flag:
+          type: boolean
+        tombstone:
+          type: boolean
+        is_parent:
+          type: boolean
+        category:
+          type: string
+          format: uuid
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        transfer_id:
+          type: string
+          description: If a transfer, the id of the transaction in the other account for the transfer. See transfers.
+          nullable: true
+        cleared:
+          type: boolean
+          description: A flag indicating if the transaction has cleared or not.
+        schedule:
+          type: string
+          nullable: true
+        subtransactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+    CreateTransaction:
+      type: object
+      required:
+        - account
+        - date
+      properties:
+        id:
+          type: string
+          format: uuid
+        account:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        amount:
+          type: number
+        payee:
+          type: string
+          format: uuid
+          description: If given, this overrides payee_name.
+          nullable: true
+        payee_name:
+          type: string
+          description: If given, a payee will be created with this name. If this matches an already existing payee, it will use it.
+        imported_payee:
+          type: string
+          description: This can be anything. Meant to represent the raw description when importing, allowing the user to see the original value.
+          nullable: true
+        imported_id:
+          type: string
+          description: A unique id usually given by the bank, if importing. Use this is avoid duplicate transactions.
+          nullable: true
+        category:
+          type: string
+          format: uuid
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        transfer_id:
+          type: string
+          description: If a transfer, the id of the transaction in the other account for the transfer. See transfers.
+          nullable: true
+        cleared:
+          type: boolean
+          description: A flag indicating if the transaction has cleared or not.
+        schedule:
+          type: string
+          nullable: true
+        subtransactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateTransaction"
     Payee:
       type: object
       properties:

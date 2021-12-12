@@ -12,7 +12,7 @@ function send(res, url, data) {
       if (value === undefined) {
         return res.sendStatus(204);
       } else {
-        console.log(value);
+        console.log(JSON.stringify(value, null, 2));
         if (typeof value === "string") {
           res.setHeader("Content-Type", "text/plain");
           res.status(200).send(value);
@@ -32,6 +32,9 @@ function send(res, url, data) {
 }
 
 const app = express();
+
+app.use(express.json());
+
 app.use(
   OpenApiValidator.middleware({
     apiSpec: "./openapi.yaml",
@@ -41,10 +44,13 @@ app.use(
   })
 );
 
-await api.init();
-console.log("connected to actual's socket");
-
-app.use(express.json());
+app.use((err, req, res, next) => {
+  // format error
+  res.status(err.status || 500).json({
+    message: err.message,
+    errors: err.errors,
+  });
+});
 
 app.get("/", (_, res) => {
   return res.sendStatus(200);
@@ -79,6 +85,7 @@ app.patch("/budget/:month/:categoryId", (req, res) => {
     _send("api/budget-set-carryover", { month, categoryId, flag: carryover });
   }
   if (hasAmount) {
+    console.log("api/budget-set-amount", { month, categoryId, amount });
     _send("api/budget-set-amount", { month, categoryId, amount });
   }
   if (!hasAmount && !hasCarryOver) {
@@ -89,26 +96,29 @@ app.patch("/budget/:month/:categoryId", (req, res) => {
 
 app.post("/accounts/:accountId/transactions", (req, res) => {
   const { accountId } = req.params;
-  const { transactions } = req.body;
+  const transactions = req.body;
   return send(res, "api/transactions-add", { accountId, transactions });
 });
 
 app.post("/accounts/:accountId/transactions-import", (req, res) => {
   const { accountId } = req.params;
-  const { transactions } = req.body;
+  const transactions = req.body;
   return send(res, "api/transactions-import", { accountId, transactions });
 });
 
 app.get("/accounts/:accountId/transactions", (req, res) => {
   const { accountId } = req.params;
-  const { text, startDate, endDate } = req.query;
-  if (text) {
-    return send(res, "api/transactions-filter", { accountId, text });
-  }
+  const { startDate, endDate } = req.query;
   if (startDate || endDate) {
-    return send("api/transactions-get", { accountId, startDate, endDate });
+    return send(res, "api/transactions-get", { accountId, startDate, endDate });
   }
-  return res.sendStatus(400);
+  return res.status(400).send;
+});
+
+app.get("/accounts/:accountId/filtered-transactions", (req, res) => {
+  const { accountId } = req.params;
+  const { text } = req.query;
+  return send(res, "api/transactions-filter", { accountId, text });
 });
 
 app.patch("/transactions/:id", (req, res) => {
@@ -241,6 +251,36 @@ app.delete("/payee-rules/:id", (req, res) => {
   return send(res, "api/payee-rule-delete", { id });
 });
 
-app.listen(8080, () => {
-  console.log("Express Listening on port 8080...");
-});
+function run() {
+  api.init().then(() => {
+    console.log("connected to actual's socket");
+    const server = app.listen(8080, () => {
+      console.log("Express Listening on port 8080...");
+    });
+
+    const gracefulShutdownHandler = function gracefulShutdownHandler(signal) {
+      console.log(`⚠️ Caught ${signal}, gracefully shutting down`);
+      setTimeout(() => {
+        console.log("🤞 Shutting down application");
+        server.close(function () {
+          console.log("👋 All requests stopped, shutting down");
+          process.exit();
+        });
+      }, 0);
+    };
+
+    // The SIGINT signal is sent to a process by its controlling terminal when a user wishes to interrupt the process.
+    process.on("SIGINT", gracefulShutdownHandler);
+
+    // The SIGTERM signal is sent to a process to request its termination.
+    process.on("SIGTERM", gracefulShutdownHandler);
+  });
+}
+
+if (require.main === module) {
+  run();
+}
+
+export default {
+  run,
+};

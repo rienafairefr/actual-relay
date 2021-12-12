@@ -1,0 +1,12 @@
+{
+  "plugins": [
+    "istanbul",
+    [
+      "@babel/plugin-transform-modules-commonjs",
+      {
+        "importInterop": "node"
+      }
+    ]
+  ],
+  "presets": [["@babel/preset-env", { "targets": { "node": "current" } }]]
+}
