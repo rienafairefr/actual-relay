@@ -16,4 +16,10 @@ export default async () => {
   }
 
   if (!serverReady) throw new Error(`Server never became ready.`);
+
+  const budgetId = "My-Finances-76b3eb9";
+  await axios.post('http://localhost:8080/_load-budget', {
+    budgetId
+  })
+  console.log(`selected budget ${budgetId}`);
 };

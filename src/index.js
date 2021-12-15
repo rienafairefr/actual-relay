@@ -1,39 +1,25 @@
 import express from "express";
 import api from "@actual-app/api";
-import * as connection from "@actual-app/api/connection.js";
+import { send } from "@actual-app/api/connection.js";
 import * as OpenApiValidator from "express-openapi-validator";
-
-const _send = connection.send;
-
-function send(res, url, data) {
-  console.log(url);
-  _send(url, data)
-    .then((value) => {
-      if (value === undefined) {
-        return res.sendStatus(204);
-      } else {
-        console.log(JSON.stringify(value, null, 2));
-        if (typeof value === "string") {
-          res.setHeader("Content-Type", "text/plain");
-          res.status(200).send(value);
-        } else if (typeof value === "object") {
-          console.log(url);
-          res.json(value);
-        }
-      }
-    })
-    .catch((error) => {
-      console.error(error);
-      if (error.message.search("not found") !== -1) {
-        return res.status(404).send(error.message);
-      }
-      return res.sendStatus(500);
-    });
-}
 
 const app = express();
 
 app.use(express.json());
+
+app.use(function (err, req, res, next) {
+  console.error(err.stack)
+  res.status(500).send('Something broke!')
+})
+
+app.use(function (req, res, next) {
+  if (Object.keys(req.params).length !== 0) {
+    console.log(req.params);
+  }
+  console.log(`${req.method.toUpperCase()} ${req.url}`);
+
+  next();
+});
 
 app.use(
   OpenApiValidator.middleware({
@@ -56,23 +42,38 @@ app.get("/", (_, res) => {
   return res.sendStatus(200);
 });
 
+app.post("/_load-budget", (req, res) => {
+  const { budgetId } = req.body;
+  return send("api/load-budget", { id: budgetId }).then(value => {
+    return res.sendStatus(204)
+  });
+})
+
 app.post("/query", (req, res) => {
   const { query } = req.body;
-  return send(res, "api/query", { query: query.serialize() });
+  return send("api/query", { query: query.serialize() }).then(value => {
+    return res.json(value)
+  });
 });
 
 app.get("/budget-months", (_, res) => {
-  return send(res, "api/budget-months");
+  send("api/budget-months").then(value => {
+    return res.json(value)
+  });
 });
 
 app.post("/budget-load", (req, res) => {
   const { budgetId } = req.body;
-  return send(res, "api/load-budget", { id: budgetId });
+  send("api/load-budget", { id: budgetId }).then(value => {
+    return res.json(value)
+  });
 });
 
 app.get("/budget/:month", (req, res) => {
   const { month } = req.params;
-  return send(res, "api/budget-month", { month });
+  return send("api/budget-month", { month }).then(value => {
+    return res.json(value)
+  });
 });
 
 app.patch("/budget/:month/:categoryId", (req, res) => {
@@ -82,11 +83,14 @@ app.patch("/budget/:month/:categoryId", (req, res) => {
   const hasAmount = amount !== undefined;
 
   if (hasCarryOver) {
-    _send("api/budget-set-carryover", { month, categoryId, flag: carryover });
+    send("api/budget-set-carryover", { month, categoryId, flag: carryover }).then(
+      () => res.sendStatus(204)
+    );
   }
   if (hasAmount) {
-    console.log("api/budget-set-amount", { month, categoryId, amount });
-    _send("api/budget-set-amount", { month, categoryId, amount });
+    send("api/budget-set-amount", { month, categoryId, amount }).then(
+      () => res.sendStatus(204)
+    );
   }
   if (!hasAmount && !hasCarryOver) {
     return res.status(400).send('modifiable fields: ["amount","carryover"]');
@@ -97,158 +101,316 @@ app.patch("/budget/:month/:categoryId", (req, res) => {
 app.post("/accounts/:accountId/transactions", (req, res) => {
   const { accountId } = req.params;
   const transactions = req.body;
-  return send(res, "api/transactions-add", { accountId, transactions });
+  send("api/transactions-add", { accountId, transactions }).then(value => {
+    if (value === 'ok') {
+      return res.status(201).send()
+    }
+    return res.sendStatus(204)
+  })
 });
 
 app.post("/accounts/:accountId/transactions-import", (req, res) => {
   const { accountId } = req.params;
   const transactions = req.body;
-  return send(res, "api/transactions-import", { accountId, transactions });
+  return send("api/transactions-import", { accountId, transactions }).then(value => {
+    if (value) {
+      return res.sendStatus(201)
+    }
+  })
 });
 
 app.get("/accounts/:accountId/transactions", (req, res) => {
   const { accountId } = req.params;
   const { startDate, endDate } = req.query;
-  if (startDate || endDate) {
-    return send(res, "api/transactions-get", { accountId, startDate, endDate });
-  }
-  return res.status(400).send;
+  //if (startDate || endDate) {
+  return send("api/transactions-get", { accountId, startDate, endDate }).then(value => {
+    return res.json(value)
+  })
+  //}
+  //return res.status(400).send;
 });
 
 app.get("/accounts/:accountId/filtered-transactions", (req, res) => {
   const { accountId } = req.params;
   const { text } = req.query;
-  return send(res, "api/transactions-filter", { accountId, text });
+  return send("api/transactions-filter", { accountId, text });
 });
 
 app.patch("/transactions/:id", (req, res) => {
   const { id } = req.params;
   const fields = req.body;
-  return send(res, "api/transaction-update", { id, fields });
+  return send("api/transaction-update", { id, fields }).then(value => {
+    if (value === 'ok') {
+      return res.sendStatus(201)
+    }
+    return res.sendStatus(400)
+  })
 });
 
 app.delete("/transactions/:id", (req, res) => {
   const { id } = req.params;
-  return send(res, "api/transaction-delete", { id });
+  return send("api/transaction-delete", { id }).then(value => {
+    if (value === 'ok') {
+      return res.sendStatus(204)
+    }
+    return res.sendStatus(400)
+  })
 });
 
 app.get("/accounts", (_, res) => {
-  return send(res, "api/accounts-get");
+  return send("api/accounts-get").then(value => {
+    return res.json(value)
+  });
+});
+
+app.get("/accounts/:id", (req, res) => {
+  const { id } = req.params;
+  return send("api/accounts-get").then((accounts) => {
+    for (let account of accounts) {
+      if (account.id === id) {
+        return res.json(account);
+      }
+    }
+    return res.sendStatus(404);
+  });
 });
 
 app.post("/accounts", (req, res) => {
   const { account, initialBalance } = req.body;
-  return send(res, "api/account-create", {
+  return send("api/account-create", {
     account,
     initialBalance: initialBalance,
-  });
+  }).then(value => {
+    if (value) {
+      return res.status(201).send(value)
+    }
+    return res.sendStatus(400)
+  })
 });
 
 app.patch("/accounts/:id", (req, res) => {
   const fields = req.body;
   const { id } = req.params;
-  send(res, "api/account-update", { id, fields });
+  send("api/account-update", { id, fields }).then(value => {
+    if (value === undefined) {
+      return res.sendStatus(204)
+    }
+    return res.sendStatus(400)
+  })
 });
 
 app.post("/accounts/:id/close", (req, res) => {
   const { id } = req.params;
-  const { transferAccountId, transferCategoryId } = req.query;
-  return send(res, "api/account-close", {
+  const { transferAccountId, transferCategoryId } = req.body;
+  return send("api/account-close", {
     id,
     transferAccountId,
     transferCategoryId,
-  });
+  }).then(value => {
+    if (value === undefined) {
+      return res.sendStatus(204)
+    }
+    return res.sendStatus(400)
+  })
 });
 
 app.post("/accounts/:id/reopen", (_, res) => {
-  return send(res, "api/account-reopen", { id });
+  return send("api/account-reopen", { id }).then(value => {
+    if (value === 'ok') {
+      return res.sendStatus(204)
+    }
+    return res.sendStatus(400)
+  })
 });
 
 app.delete("/accounts/:id", (req, res) => {
   const { id } = req.params;
-  return send(res, "api/account-delete", { id });
+  return send("api/account-delete", { id }).then(value => {
+    if (value === undefined) {
+      return res.sendStatus(204)
+    }
+    return res.sendStatus(400)
+  }).catch((error) => {
+    console.log(error)
+  })
 });
 
 app.get("/category-groups", (req, res) => {
-  const grouped = req.query.grouped || false;
-  return send(res, "api/categories-get", { grouped });
+  return send("api/categories-get", { grouped: true }).then(value => {
+    return res.json(value)
+  })
+});
+
+app.get("/category-groups/:id", (req, res) => {
+  const { id } = req.params;
+  return send("api/categories-get", { grouped: true }).then((groups) => {
+    for (let group of groups) {
+      if (group.id === id) {
+        return res.json(group);
+      }
+    }
+    return res.sendStatus(404);
+  });
 });
 
 app.post("/category-groups", (req, res) => {
   const group = req.body;
-  return send(res, "api/category-group-create", { group });
+  return send("api/category-group-create", { group }).then(value => {
+    if (value) {
+      return res.status(201).send(value)
+    }
+    return res.sendStatus(400)
+  })
 });
 
 app.patch("/category-groups/:id", (req, res) => {
+  const { id } = req.params;
   const fields = req.body;
-  return send(res, "api/category-group-update", { id, fields });
+  return send("api/category-group-update", { id, fields }).then(value => {
+    if (value === 'ok') {
+      return res.sendStatus(204)
+    }
+    return res.sendStatus(400)
+  })
 });
 
 app.delete("/category-groups/:id", (req, res) => {
   const { transferCategoryId } = req.query;
   const { id } = req.params;
-  return send(res, "api/category-group-delete", { id, transferCategoryId });
+  return send("api/category-group-delete", { id, transferCategoryId }).then(value => {
+    if (value === undefined) {
+      return res.sendStatus(204)
+    }
+    return res.sendStatus(400)
+  })
 });
 
 app.get("/categories", (req, res) => {
-  const grouped = req.query.grouped || false;
-  return send(res, "api/categories-get", { grouped });
+  return send("api/categories-get", { grouped: false }).then(value => {
+    return res.json(value)
+  })
+});
+
+app.get("/categories/:id", (req, res) => {
+  const { id } = req.params;
+  return send("api/categories-get", { grouped: false }).then((categories) => {
+    for (let category of categories) {
+      if (category.id === id) {
+        return res.json(category);
+      }
+    }
+    return res.sendStatus(404);
+  });
 });
 
 app.post("/categories", (req, res) => {
   const category = req.body;
-  return send(res, "api/category-create", { category });
+  return send("api/category-create", { category }).then(value => {
+    if (value) {
+      return res.status(201).send(value)
+    }
+    return res.sendStatus(400)
+  })
 });
 
 app.patch("/categories/:id", (req, res) => {
   const fields = req.body;
-  return send(res, "api/category-update", { id, fields });
+  const { id } = req.params;
+  return send("api/category-update", { id, fields }).then(value => {
+    if (Object.keys(value).length === 0) {
+      return res.sendStatus(204)
+    }
+    return res.sendStatus(400)
+  })
 });
 
 app.delete("/categories/:id", (req, res) => {
   const { id } = req.params;
-  return send(res, "api/category-delete", { id, transferCategoryId });
+  return send("api/category-delete", { id }).then(value => {
+    if (Object.keys(value).length === 'ok') {
+      return res.sendStatus(204)
+    }
+    return res.sendStatus(400)
+  })
 });
 
 app.get("/payees", (_, res) => {
-  return send(res, "api/payees-get");
+  return send("api/payees-get").then(value => {
+    return res.json(value)
+  })
 });
 
 app.post("/payees", (req, res) => {
   const payee = req.body;
-  return send(res, "api/payee-create", { payee });
+  return send("api/payee-create", { payee }).then(value => {
+    if (value) {
+      return res.status(201).send(value)
+    }
+    return res.sendStatus(400)
+  })
 });
 
 app.patch("/payees/:id", (req, res) => {
   const { id } = req.params;
   const fields = req.body;
-  return send(res, "api/payee-update", { id, fields });
+  return send("api/payee-update", { id, fields }).then(value => {
+    if (value) {
+      return res.sendStatus(204)
+    }
+    return res.sendStatus(400)
+  })
 });
 
-app.delete("/payee/:id", (req, res) => {
+app.delete("/payees/:id", (req, res) => {
   const { id } = req.params;
-  return send(res, "api/payee-delete", { id });
+  return send("api/payee-delete", { id }).then(value => {
+    if (value === 'ok') {
+      return res.sendStatus(204)
+    }
+    return res.sendStatus(400)
+  })
 });
 
-app.get("/payee-rules/:payeeId", (req, res) => {
+app.get("/payees/:id", (req, res) => {
+  const { id } = req.params;
+  return send("api/payees-get").then((payees) => {
+    for (let payee of payees) {
+      if (payee.id === id) {
+        return res.json(payee);
+      }
+    }
+    return res.sendStatus(400);
+  });
+});
+
+app.get("/payees/:payeeId/rules", (req, res) => {
   const { payeeId } = req.params;
-  return send(res, "api/payee-rules-get", { payeeId });
+  return send("api/payee-rules-get", { payeeId }).then(value => {
+    return res.json(value)
+  })
 });
 
-app.post("/payee-rules", (req, res) => {
-  const { rule, payeeId } = req.body;
-  return send(res, "api/payee-rule-create", { payee_id: payeeId, rule });
+app.post("/payees/:payeeId/rules", (req, res) => {
+  const { payeeId } = req.params;
+  const rule = req.body;
+  return send("api/payee-rule-create", { payee_id: payeeId, rule }).then(value => {
+    return res.json(value)
+  })
 });
 
 app.patch("/payee-rules/:id", (req, res) => {
   const fields = req.body;
   const { id } = req.params;
-  return send(res, "api/payee-rule-update", { id, fields });
+  return send("api/payee-rule-update", { id, fields }).then(value => {
+    return res.json(value)
+  })
 });
 
 app.delete("/payee-rules/:id", (req, res) => {
   const { id } = req.params;
-  return send(res, "api/payee-rule-delete", { id });
+  return send("api/payee-rule-delete", { id }).then(value => {
+    return res.json(value)
+  })
 });
 
 function run() {

@@ -5,9 +5,11 @@
   "license": "MIT",
   "scripts": {
     "build": "babel src -d lib",
-    "watch": "nodemon --exec yarn serve",
-    "serve": "yarn build && node lib/index.js",
-    "integration-test": "jest",
+    "watch": "nodemon --exec 'yarn build && yarn serve'",
+    "serve": "node lib/index.js",
+    "test": "jest",
+    "integration-test": "run-s test kill-server",
+    "kill-server": "node lib/kill-server.js",
     "serve-with-coverage": "nyc yarn serve",
     "coverage-report": "nyc report",
     "coverage": "npm-run-all --parallel integration-test serve-with-coverage --serial coverage-report"

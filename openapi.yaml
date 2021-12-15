@@ -127,13 +127,13 @@ paths:
           schema:
             type: string
             format: date
-          required: true
+          required: false
         - in: query
           name: startDate
           schema:
             type: string
             format: date
-          required: true
+          required: false
       responses:
         default:
           description: "Account transactions response"
@@ -383,7 +383,7 @@ paths:
             schema:
               type: object
       responses:
-        204:
+        201:
           description: OK
         400:
           description: NOK
@@ -405,13 +405,23 @@ paths:
           description: OK
         400:
           description: NOK
+    get:
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payee"
+        400:
+          description: NOK
     delete:
       responses:
         204:
           description: OK
         400:
           description: NOK
-  /payee-rules/{payeeId}:
+  /payees/{payeeId}/rules:
     parameters:
       - in: path
         name: payeeId
@@ -425,7 +435,9 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                type: array
+                items:
+                  $ref: "#/components/schemas/PayeeRule"
         400:
           description: NOK
     patch:
@@ -445,16 +457,19 @@ paths:
           description: OK
         400:
           description: NOK
-  /payee-rules:
     post:
       requestBody:
         content:
           application/json:
             schema:
-              type: object
+              $ref: "#/components/schemas/PayeeRule"
       responses:
-        204:
+        200:
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayeeRule"
         400:
           description: NOK
 
@@ -478,6 +493,9 @@ components:
         type: string
     Category:
       type: object
+      required:
+        - name
+        - group_id
       properties:
         group_id:
           type: string
@@ -499,7 +517,7 @@ components:
           format: uuid
         name:
           type: string
-        offbudgeting:
+        offbudget:
           type: boolean
         type:
           type: string
@@ -529,7 +547,7 @@ components:
           type: boolean
         name:
           type: string
-        offbudgeting:
+        offbudget:
           type: boolean
         type:
           type: string
@@ -578,8 +596,29 @@ components:
       type: array
       items:
         $ref: "#/components/schemas/CategoryGroup"
+    PayeeRule:
+      type: object
+      required:
+        - type
+        - value
+      properties:
+        id:
+          type: string
+          format: uuid
+        payee_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: ["equals", "contains"]
+          description: Must be one of equals or contains
+        value:
+          type: string
+          description: Value to match imported payee names on
     CategoryGroup:
       type: object
+      required:
+        - name
       properties:
         balance:
           type: number
